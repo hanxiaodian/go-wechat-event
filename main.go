@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -47,6 +48,24 @@ type EventPushBody struct {
 	Encrypt    string
 }
 
+type EventMsg struct {
+	ToUserName   string `json:"ToUserName"`   // 小程序的原始ID
+	FromUserName string `json:"FromUserName"` // 发送消息的人的 openid
+	CreateTime   int64  `json:"CreateTime"`   // 消息创建时间，整型
+	MsgId        int64  `json:"MsgId"`        // 消息id，64位整型
+	MsgType      string `json:"MsgType"`      // 消息类型
+	Event        string `json:"Event"`        // 微信服务器推送事件类型
+	Content      string `json:"Content"`      // MsgType 为 text 时有效，用户发的文本内容
+	PicUrl       string `json:"PicUrl"`       // MsgType 为 image 时有效，用户发的图片链接（由系统生成）
+	MediaId      string `json:"MediaId"`      // MsgType 为 image 时有效，图片消息媒体id，可以调用[获取临时素材]((getTempMedia)接口拉取数据。
+	Title        string `json:"Title"`        // MsgType 为 miniprogrampage 时有效，用户发送小程序卡片标题
+	AppId        string `json:"AppId"`        // MsgType 为 miniprogrampage 时有效，用户发送小程序appid
+	PagePath     string `json:"PagePath"`     // MsgType 为 miniprogrampage 时有效，用户发送小程序页面路径
+	ThumbUrl     string `json:"ThumbUrl"`     // MsgType 为 miniprogrampage 时有效，用户发送封面图片的临时cdn链接
+	ThumbMediaId string `json:"ThumbMediaId"` // MsgType 为 miniprogrampage 时有效，用户发送封面图片的临时素材id
+	SessionFrom  string `json:"SessionFrom"`  // MsgType 是 event 且 Event 是 user_enter_tempsession 时有效，开发者在客服会话按钮设置的 session-from 属性
+}
+
 func handleEvent(c *gin.Context) {
 	// 从请求 query 参数中获取验证所需的参数
 	signature := c.Query("signature")
@@ -84,10 +103,7 @@ func handleEvent(c *gin.Context) {
 	}
 
 	// 解析推送消息的类型
-	var eventMsg struct {
-		MsgType string `json:"MsgType"`
-		// 其他字段根据具体消息类型添加
-	}
+	var eventMsg EventMsg
 	if err := json.Unmarshal([]byte(decryptedData), &eventMsg); err != nil {
 		c.String(400, "Failed to parse decrypted message")
 		return
@@ -141,30 +157,12 @@ func handleEvent(c *gin.Context) {
 			logger.Error(err)
 		}
 
-		switch event.Event {
-		case "subscribe":
-			// 处理订阅事件
-			// 具体逻辑...
-
-		case "unsubscribe":
-			// 处理取消订阅事件
-			// 具体逻辑...
-
-		case "CLICK":
-			// 处理点击菜单事件
-			// 具体逻辑...
-
-		case "VIEW":
-			// 处理点击菜单跳转链接事件
-			// 具体逻辑...
-
-		case "SCAN":
-			// 处理扫描带参数二维码事件
-			// 具体逻辑...
-
-		case "LOCATION":
-			// 处理上报地理位置事件
-			// 具体逻辑...
+		switch eventMsg.Event {
+		case "user_enter_tempsession":
+			// 用户进入客服会话事件通知
+			if eventMsg.SessionFrom != "" {
+				fmt.Println(eventMsg.SessionFrom)
+			}
 		default:
 			// 未知事件类型
 		}
@@ -173,5 +171,5 @@ func handleEvent(c *gin.Context) {
 	}
 
 	// 处理完消息或事件逻辑后，返回响应给微信服务器
-	c.String(200, "Success")
+	c.String(200, "success")
 }
